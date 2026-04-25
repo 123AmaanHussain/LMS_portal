@@ -86,6 +86,10 @@ export const issueBook  = (bookId, memberId)  =>
 export const returnBook = (transactionId)     =>
   req(`${BASE}/transactions/return`, { method: 'POST', body: JSON.stringify({ transactionId }) })
 
+export const getTransactionReceipt = (transactionId) =>
+  req(`${BASE}/transactions/${transactionId}/receipt`)
+
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export const getDashboardStats = () => req(`${BASE}/dashboard`)
 
