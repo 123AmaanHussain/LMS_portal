@@ -1,109 +1,111 @@
-# 📚 Library Book Issue/Return System (Phase-1 Demo)
+# 📚 Library Management System (LMS Portal)
 
-A modern, full-stack Library Management System designed to automate book inventory, member tracking, and transaction flows. This project is currently in **Phase-1**, focusing on core engine development and database integration.
+![LMS Hero](assets/hero.png)
 
----
+[![Java](https://img.shields.io/badge/Backend-Java%2017-orange?style=for-the-badge&logo=openjdk)](https://openjdk.org/)
+[![React](https://img.shields.io/badge/Frontend-React%2018-blue?style=for-the-badge&logo=react)](https://react.dev/)
+[![Supabase](https://img.shields.io/badge/Database-Supabase-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
+[![Vite](https://img.shields.io/badge/Build-Vite%205-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
 
-## 🎯 Phase Management (Requirements Check)
-
-| Requirement | Status | Description |
-| :--- | :--- | :--- |
-| **1. Problem Statement** | ✅ Done | Identified manual bottlenecks and automation goals. |
-| **2. Design Models** | ✅ Done | 3-Tier Architecture & Entity-Relationship design. |
-| **3. Tech Stack** | ✅ Done | Java 17 + React + Supabase (PostgreSQL). |
-| **4. Initial Implementation** | ✅ Done | ~70% core features functional (Target: 30-40%). |
-| **5. Database Schema** | ✅ Done | Normalized schema with foreign keys & indexes. |
-| **6. Documentation** | ✅ Done | Comprehensive API & Setup guide (Draft). |
+A premium, full-stack Library Management System engineered for high performance and seamless user experience. Designed with a modern **Emerald & Charcoal** aesthetic, this portal automates the entire lifecycle of library operations—from book inventory and member registry to a sophisticated reservation and approval workflow.
 
 ---
 
-## 📌 1. Problem Statement
-Managing a library manually—using paper logs or unlinked spreadsheets—is inefficient, slow, and prone to "silent" errors. 
-*   **Invisibility**: No real-time view of book availability across multiple copies.
-*   **Overdue Losses**: Manual fine calculation often results in lost revenue and unreturned books.
-*   **Data Silos**: Member records are not dynamically linked to their transaction history.
-*   **Solution**: This system provides a centralized digital dashboard that links every book, member, and transaction into a single, automated source of truth.
+## ✨ Key Features
+
+### 🚀 Advanced Dashboards
+- **Real-time Analytics**: Instant tracking of total books, active issues, overdue returns, and fine collections.
+- **Dynamic Stats**: Visual overview of library health with auto-updating metrics.
+
+### 📖 Inventory & Member Management
+- **Full CRUD Support**: Manage books and members with high-integrity database constraints.
+- **Automated ID Generation**: Unique library IDs (`LIB-XXX`) for every new member.
+- **Borrowing Logic**: Strict limits on active issues (Max 5 per member) to ensure fair circulation.
+
+### 🔄 Transaction Engine
+- **One-Click Issue/Return**: Streamlined workflow with automatic stock adjustments.
+- **Automated Fine Calculation**: Precise tracking of overdue fines based on due dates.
+- **CSV Exports**: One-click data portability for books, members, and transactions.
+
+### 🛠️ Reservation System (New!)
+- **Member Requests**: Patrons can request books that are currently unavailable.
+- **Admin Approval Workflow**: Admins can review, approve, or reject book requests directly from the dashboard.
+- **Auto-Issue on Approval**: Approved requests automatically convert into issued transactions.
 
 ---
 
-## 🏗️ 2. Design Models & Architecture
-The system follows a **Decoupled 3-Tier Architecture**:
+## 🏗️ Technical Architecture
 
-### System Flow
+The system utilizes a **Decoupled 3-Tier Architecture** for maximum scalability and performance:
+
+- **Frontend**: React 18 + Vite + Tailwind CSS (State management via React Hooks).
+- **Backend**: Pure Java 17 `HttpServer`. Lightweight, lightning-fast, and zero-overhead.
+- **Database**: Supabase PostgreSQL. Enterprise-grade reliability with transactional integrity.
+
 ```mermaid
 graph LR
-  A[React Frontend] -->|REST API| B[Java HttpServer]
-  B -->|JDBC / SQL| C[Supabase PostgreSQL]
+  A[React Frontend] -->|REST API| B[Java Backend]
+  B -->|JDBC| C[Supabase DB]
   C -->|Result Sets| B
-  B -->|JSON Response| A
+  B -->|JSON| A
 ```
 
-### Data Models (Entities)
-*   **Book**: Stores title, author, genre, and tracks `total_copies` vs `available`.
-*   **Member**: Stores profile data and unique identifier (`LIB-001`).
-*   **Transaction**: Manages the lifecycle of a loan (Issued ↔ Due ↔ Returned).
+---
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+- **Java 17+**
+- **Node.js 18+**
+- **Maven**
+- **Supabase Account**
+
+### 2. Database Setup
+1. Execute the `supabase_schema.sql` in your Supabase SQL Editor.
+2. Ensure you have the `BookRequests` table for the reservation system.
+
+### 3. Environment Configuration
+Create a `.env` file in the root directory:
+```env
+DB_URL=jdbc:postgresql://your-db-host:5432/postgres
+DB_USER=your-username
+DB_PASSWORD=your-password
+PORT=9090
+```
+
+### 4. Launching the Application
+
+#### Backend (Java)
+```bash
+mvn clean package
+java -jar target/library-system-1.0.jar
+```
+
+#### Frontend (React)
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
-## 🛠️ 3. Technology Stack
-*   **Backend**: **Java 17** (Pure `HttpServer` for high performance/low overhead).
-*   **Core Logic**: **Maven**, **JDBC**, **Google Gson** (JSON Serialization).
-*   **Frontend**: **React 18**, **Vite 5**, **Tailwind CSS**, **React Router v6**.
-*   **Database**: **Supabase (PostgreSQL)** with Transactional Connection Pooling.
+## 🎨 Design Philosophy
+The LMS Portal follows a **Premium Dark Aesthetic**:
+- **Primary Colors**: Charcoal (#121212) & Emerald (#10B981).
+- **Typography**: Inter / Outfit (Modern Sans-Serif).
+- **Interactions**: Smooth micro-animations and glassmorphism effects.
 
 ---
 
-## ⚡ 4. Initial Implementation (MVP Progress)
-The current build (~70% progress) features a fully functional "Minimum Working Progress" environment:
-
-### ✅ Completed
-*   **Dashboard**: Live statistics for total books, active issues, overdue returns, and total fines collected.
-*   **Book CRUD**: Full management of the library inventory.
-*   **Member Registry**: Registration with automated `LIB-XXX` ID generation.
-*   **Transaction Engine**: Core logic for issuing books (stock decrement) and returning books (fine calculation).
-*   **Export to CSV**: One-click export of Books, Members, and Transaction data to CSV files.
-*   **Borrowing Limit**: Members are restricted to a maximum of 5 active book issues at a time.
-*   **Fine Analytics**: Dashboard tracks total fines collected across all returned transactions.
-
-### 🚧 Upcoming (Phase-2)
-*   Admin Authentication (JWT Login).
-*   PDF Receipt Generation for returns.
-*   Email Notifications for overdue members.
+## 🛣️ Roadmap
+- [x] Core Transaction Engine
+- [x] Member & Book CRUD
+- [x] Reservation & Approval System
+- [ ] **Phase 2**: JWT Authentication & Role-Based Access
+- [ ] **Phase 3**: Automated Email Reminders
+- [ ] **Phase 4**: PDF Receipt Generation
 
 ---
 
-## 🗄️ 5. Database Schema
-The database is structured in PostgreSQL with a focus on data integrity.
-
-*   **`books`**: Master table for all inventory.
-*   **`members`**: Stores library patrons with unique email/ID constraints.
-*   **`transactions`**: The central ledger for all borrow/return activity.
-*   **Indexes**: Implemented on `isbn`, `member_id`, and `due_date` for high-speed queries.
-
----
-
-## 📖 6. Documentation
-
-### 🚀 Quick Start
-1.  **Database**: Run `supabase_schema.sql` in your Supabase SQL Editor.
-2.  **Config**: Create a `.env` file in the root with `DB_URL`, `DB_USER`, and `DB_PASSWORD`.
-3.  **Run Backend**:
-    ```bash
-    mvn clean package
-    java -jar target\library-system-1.0.jar  # Starts on port 9090
-    ```
-4.  **Run Frontend**:
-    ```bash
-    cd frontend && npm install && npm run dev # Starts on port 5173
-    ```
-
-### 📡 API Reference
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/dashboard` | Aggregated library statistics |
-| `GET` | `/api/books` | Search and list library books |
-| `POST` | `/api/transactions/issue` | Issue a book to a member |
-| `POST` | `/api/transactions/return`| Process a return & calculate fines |
-
----
-
+Developed with ❤️ by [Amaan Hussain](https://github.com/123AmaanHussain)
