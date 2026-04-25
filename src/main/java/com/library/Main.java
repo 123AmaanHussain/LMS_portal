@@ -1,5 +1,6 @@
 package com.library;
 
+import com.library.config.EnvLoader;
 import com.library.config.MigrationRunner;
 import com.library.handler.*;
 import com.sun.net.httpserver.*;
@@ -9,11 +10,11 @@ import java.util.concurrent.Executors;
 
 /**
  * Entry point for the Library Management System REST API.
- * Starts an HttpServer on port 9090 and registers all API route handlers.
+ * Reads the server port from environment variables (.env).
  */
 public class Main {
 
-    private static final int PORT = 9090;
+    private static final int PORT = Integer.parseInt(EnvLoader.get("PORT", "9090"));
 
     public static void main(String[] args) throws IOException {
         // Run database migrations on startup
