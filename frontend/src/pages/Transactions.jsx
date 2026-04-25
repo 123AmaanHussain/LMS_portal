@@ -99,9 +99,21 @@ export default function Transactions() {
   const handleReturn = async (transactionId, bookTitle, fine) => {
     setSubmitting(true)
     try {
-      await returnBook(transactionId)
+      const res = await returnBook(transactionId)
       const fineMsg = fine > 0 ? ` Fine collected: ₹${fine}` : ''
-      toast(`"${bookTitle}" returned successfully!${fineMsg}`)
+      toast(`"${bookTitle}" returned successfully!${fineMsg}`, 'success')
+      
+      // Handle PDF Receipt download
+      if (res.receiptPdf) {
+        const link = document.createElement('a')
+        link.href = `data:application/pdf;base64,${res.receiptPdf}`
+        link.download = `receipt_${transactionId}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast('Receipt downloaded!', 'info')
+      }
+      
       loadAll()
     } catch (e) {
       toast(e.message, 'error')
@@ -109,6 +121,7 @@ export default function Transactions() {
       setSubmitting(false)
     }
   }
+
 
   const handleApprove = async (id) => {
     setSubmitting(true)

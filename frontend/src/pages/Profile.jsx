@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { getProfile } from '../api/libraryApi'
+import { getProfile, getTransactionReceipt } from '../api/libraryApi'
+
 import { useAuth } from '../context/AuthContext'
 
 const fmtDate = (str) =>
@@ -185,6 +186,7 @@ export default function Profile() {
                 <tr>
                   <th>Book Title</th><th>Author</th>
                   <th>Issued</th><th>Returned</th><th>Fine</th>
+                  <th>Receipt</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,8 +201,51 @@ export default function Profile() {
                         {tx.fineAmount > 0 ? `₹${tx.fineAmount}` : 'No fine'}
                       </span>
                     </td>
+                    <td>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const res = await getTransactionReceipt(tx.transactionId)
+                            const link = document.createElement('a')
+                            link.href = `data:application/pdf;base64,${res.receiptPdf}`
+                            link.download = `receipt_${tx.transactionId}.pdf`
+                            document.body.appendChild(link)
+                            link.click()
+                            document.body.removeChild(link)
+                          } catch (e) {
+                            alert('Error downloading receipt: ' + e.message)
+                          }
+                        }}
+                        style={{
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          borderRadius: '8px',
+                          color: '#10b981',
+                          padding: '6px 12px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s ease',
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)'
+                          e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.4)'
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'
+                          e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.2)'
+                        }}
+                      >
+                        📄 Download Receipt
+                      </button>
+                    </td>
                   </tr>
                 ))}
+
+
               </tbody>
             </table>
           </div>
