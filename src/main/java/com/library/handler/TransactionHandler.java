@@ -49,8 +49,35 @@ public class TransactionHandler implements HttpHandler {
             if (session == null) return;
 
             if ("GET".equals(method)) {
+                if (subPath != null && parts.length > 4 && "receipt".equals(parts[4])) {
+                    // Endpoint: GET /api/transactions/{id}/receipt
+                    String id = subPath;
+                    Transaction tx = txDao.getTransactionById(id);
+                    if (tx == null) {
+                        ResponseUtil.sendError(exchange, 404, "Transaction not found.");
+                        return;
+                    }
+                    if (!"RETURNED".equals(tx.getStatus())) {
+                        ResponseUtil.sendError(exchange, 400, "Receipt only available for returned books.");
+                        return;
+                    }
+                    
+                    // Auth security check: Member can only see their own receipt, Admin can see all
+                    if (!session.isAdmin() && !session.getUserId().equals(tx.getMemberId())) {
+                        ResponseUtil.sendError(exchange, 403, "Access denied. You can only download your own receipts.");
+                        return;
+                    }
+
+                    String pdfBase64 = com.library.util.PdfGenerator.generateReturnReceiptBase64(tx);
+                    JsonObject resp = new JsonObject();
+                    resp.addProperty("receiptPdf", pdfBase64);
+                    ResponseUtil.sendJson(exchange, 200, gson.toJson(resp));
+                    return;
+                }
+
                 List<Transaction> result;
                 if (subPath == null)             result = txDao.getAllTransactions();
+
                 else if ("active".equals(subPath))  result = txDao.getActiveTransactions();
                 else if ("overdue".equals(subPath)) result = txDao.getOverdueTransactions();
                 else { ResponseUtil.sendError(exchange, 404, "Unknown endpoint."); return; }
@@ -79,7 +106,16 @@ public class TransactionHandler implements HttpHandler {
                     }
                     String transactionId = json.get("transactionId").getAsString();
                     Transaction tx       = txDao.returnBook(transactionId);
-                    ResponseUtil.sendJson(exchange, 200, gson.toJson(tx));
+                    
+                    // Generate PDF Receipt
+                    String receiptBase64 = com.library.util.PdfGenerator.generateReturnReceiptBase64(tx);
+                    
+                    JsonObject response = new JsonObject();
+                    response.add("transaction", gson.toJsonTree(tx));
+                    response.addProperty("receiptPdf", receiptBase64);
+                    
+                    ResponseUtil.sendJson(exchange, 200, gson.toJson(response));
+
 
                 } else {
                     ResponseUtil.sendError(exchange, 404, "Unknown endpoint. Use /issue or /return.");

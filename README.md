@@ -102,9 +102,10 @@ The LMS Portal follows a **Premium Dark Aesthetic**:
 - [x] Core Transaction Engine
 - [x] Member & Book CRUD
 - [x] Reservation & Approval System
+- [x] **Phase 4**: PDF Receipt Generation
 - [ ] **Phase 2**: JWT Authentication & Role-Based Access
 - [ ] **Phase 3**: Automated Email Reminders
-- [ ] **Phase 4**: PDF Receipt Generation
+
 
 ---
 
