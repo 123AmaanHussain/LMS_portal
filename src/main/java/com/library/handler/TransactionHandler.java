@@ -2,6 +2,7 @@ package com.library.handler;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import com.library.dao.TransactionDao;
 import com.library.model.Transaction;
 import com.library.util.CorsUtil;
@@ -19,7 +20,7 @@ import java.util.List;
  *   GET  /api/transactions          → all transactions (last 200)
  *   GET  /api/transactions/active   → currently issued books
  *   GET  /api/transactions/overdue  → overdue books
- *   POST /api/transactions/issue    → issue a book { bookId, memberId }
+ *   POST /api/transactions/issue    → issue a book { bookId, memberId } OR { bookIds, memberId }
  *   POST /api/transactions/return   → return a book { transactionId }
  */
 public class TransactionHandler implements HttpHandler {
@@ -89,14 +90,23 @@ public class TransactionHandler implements HttpHandler {
                 JsonObject json = gson.fromJson(body, JsonObject.class);
 
                 if ("issue".equals(subPath)) {
-                    if (!json.has("bookId") || !json.has("memberId")) {
-                        ResponseUtil.sendError(exchange, 400, "Missing bookId or memberId.");
+                    if (!json.has("memberId")) {
+                        ResponseUtil.sendError(exchange, 400, "Missing memberId.");
                         return;
                     }
-                    String bookId   = json.get("bookId").getAsString();
                     String memberId = json.get("memberId").getAsString();
-                    Transaction tx  = txDao.issueBook(bookId, memberId);
-                    ResponseUtil.sendJson(exchange, 201, gson.toJson(tx));
+
+                    if (json.has("bookIds")) {
+                        List<String> bookIds = gson.fromJson(json.get("bookIds"), new TypeToken<List<String>>(){}.getType());
+                        List<Transaction> txs = txDao.issueBooks(bookIds, memberId);
+                        ResponseUtil.sendJson(exchange, 201, gson.toJson(txs));
+                    } else if (json.has("bookId")) {
+                        String bookId   = json.get("bookId").getAsString();
+                        Transaction tx  = txDao.issueBook(bookId, memberId);
+                        ResponseUtil.sendJson(exchange, 201, gson.toJson(tx));
+                    } else {
+                        ResponseUtil.sendError(exchange, 400, "Missing bookId or bookIds.");
+                    }
 
                 } else if ("return".equals(subPath)) {
                     if (!json.has("transactionId")) {

@@ -74,24 +74,23 @@ public class TransactionDao {
     }
 
     public Transaction issueBook(String bookId, String memberId, int loanDays) throws SQLException {
-        String txId = null;
+        List<Transaction> result = issueBooks(java.util.Collections.singletonList(bookId), memberId, loanDays);
+        return result.isEmpty() ? null : result.get(0);
+    }
+
+    public List<Transaction> issueBooks(List<String> bookIds, String memberId) throws SQLException {
+        return issueBooks(bookIds, memberId, LOAN_DAYS);
+    }
+
+    public List<Transaction> issueBooks(List<String> bookIds, String memberId, int loanDays) throws SQLException {
+        if (bookIds == null || bookIds.isEmpty()) throw new SQLException("No books selected for issue.");
+        
+        List<String> txIds = new java.util.ArrayList<>();
 
         try (Connection conn = DbConfig.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                // 1. Lock the book row and check availability
-                int available;
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "SELECT available FROM books WHERE id = ?::uuid FOR UPDATE")) {
-                    ps.setString(1, bookId);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (!rs.next()) throw new SQLException("Book not found.");
-                        available = rs.getInt("available");
-                    }
-                }
-                if (available <= 0) throw new SQLException("No copies available for this book.");
-
-                // 2. Verify member is active
+                // 1. Verify member is active
                 try (PreparedStatement ps = conn.prepareStatement(
                         "SELECT is_active FROM members WHERE id = ?::uuid")) {
                     ps.setString(1, memberId);
@@ -102,31 +101,51 @@ public class TransactionDao {
                     }
                 }
 
-                // 2.5 Enforce borrowing limit
+                // 2. Enforce borrowing limit (total count after this issue)
+                int currentIssues;
                 try (PreparedStatement ps = conn.prepareStatement(
                         "SELECT COUNT(*) FROM transactions WHERE member_id = ?::uuid AND status = 'ISSUED'")) {
                     ps.setString(1, memberId);
                     try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next() && rs.getInt(1) >= MAX_ACTIVE_ISSUES)
-                            throw new SQLException("Borrowing limit reached.");
+                        currentIssues = rs.next() ? rs.getInt(1) : 0;
                     }
                 }
 
-                // 3. Insert transaction
-                String sql = "INSERT INTO transactions (book_id, member_id, due_date) VALUES (?::uuid, ?::uuid, NOW() + INTERVAL '" + loanDays + " days') RETURNING id";
-                try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                    ps.setString(1, bookId);
-                    ps.setString(2, memberId);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) txId = rs.getString("id");
-                    }
+                if (currentIssues + bookIds.size() > MAX_ACTIVE_ISSUES) {
+                    throw new SQLException(String.format(
+                        "Borrowing limit reached. Member currently has %d active loans. Issuing %d more would exceed the limit of %d.",
+                        currentIssues, bookIds.size(), MAX_ACTIVE_ISSUES));
                 }
 
-                // 4. Decrement available count
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "UPDATE books SET available = available - 1 WHERE id = ?::uuid")) {
-                    ps.setString(1, bookId);
-                    ps.executeUpdate();
+                for (String bookId : bookIds) {
+                    // 3. Lock the book row and check availability
+                    int available;
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "SELECT available FROM books WHERE id = ?::uuid FOR UPDATE")) {
+                        ps.setString(1, bookId);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (!rs.next()) throw new SQLException("Book not found ID: " + bookId);
+                            available = rs.getInt("available");
+                        }
+                    }
+                    if (available <= 0) throw new SQLException("No copies available for book ID: " + bookId);
+
+                    // 4. Insert transaction
+                    String sql = "INSERT INTO transactions (book_id, member_id, due_date) VALUES (?::uuid, ?::uuid, NOW() + INTERVAL '" + loanDays + " days') RETURNING id";
+                    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                        ps.setString(1, bookId);
+                        ps.setString(2, memberId);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (rs.next()) txIds.add(rs.getString("id"));
+                        }
+                    }
+
+                    // 5. Decrement available count
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "UPDATE books SET available = available - 1 WHERE id = ?::uuid")) {
+                        ps.setString(1, bookId);
+                        ps.executeUpdate();
+                    }
                 }
 
                 conn.commit();
@@ -137,7 +156,13 @@ public class TransactionDao {
                 conn.setAutoCommit(true);
             }
         }
-        return txId != null ? getTransactionById(txId) : null;
+
+        // Fetch full details for all created transactions
+        List<Transaction> results = new java.util.ArrayList<>();
+        for (String tid : txIds) {
+            results.add(getTransactionById(tid));
+        }
+        return results;
     }
 
     // ─── Return a book ────────────────────────────────────────────────────────

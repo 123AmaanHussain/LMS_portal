@@ -54,7 +54,8 @@ export default function Transactions() {
   const [requests, setRequests]             = useState([])
   const [loading, setLoading]               = useState(false)
   const [submitting, setSubmitting]         = useState(false)
-  const [issueForm, setIssueForm]           = useState({ bookId: '', memberId: '' })
+  const [issueMode, setIssueMode]           = useState('single') // 'single' or 'multiple'
+  const [issueForm, setIssueForm]           = useState({ bookId: '', bookIds: [], memberId: '' })
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -79,20 +80,39 @@ export default function Transactions() {
   // ─── Issue Book ─────────────────────────────────────────────────────────────
   const handleIssue = async (e) => {
     e.preventDefault()
-    if (!issueForm.bookId || !issueForm.memberId) {
-      toast('Please select both a book and a member.', 'warning'); return
+    if (!issueForm.memberId) { toast('Please select a member.', 'warning'); return }
+    
+    let payload = { memberId: issueForm.memberId }
+    if (issueMode === 'single') {
+      if (!issueForm.bookId) { toast('Please select a book.', 'warning'); return }
+      payload.bookId = issueForm.bookId
+    } else {
+      if (issueForm.bookIds.length === 0) { toast('Please select at least one book.', 'warning'); return }
+      payload.bookIds = issueForm.bookIds
     }
+
     setSubmitting(true)
     try {
-      const tx = await issueBook(issueForm.bookId, issueForm.memberId)
-      toast(`✓ Book issued! Due: ${fmtDate(tx.dueDate)}`)
-      setIssueForm({ bookId: '', memberId: '' })
+      const res = await issueBook(payload)
+      const count = Array.isArray(res) ? res.length : 1
+      toast(`✓ ${count} book(s) issued!`)
+      setIssueForm({ bookId: '', bookIds: [], memberId: '' })
       loadAll()
     } catch (e) {
       toast(e.message, 'error')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const toggleBookSelection = (id) => {
+    setIssueForm(p => {
+      const exists = p.bookIds.includes(id)
+      return {
+        ...p,
+        bookIds: exists ? p.bookIds.filter(x => x !== id) : [...p.bookIds, id]
+      }
+    })
   }
 
   // ─── Return Book ────────────────────────────────────────────────────────────
@@ -243,8 +263,29 @@ export default function Transactions() {
           <div className="glass-card fade-up" style={{ padding: '40px' }}>
             <h2 style={{ color: '#fff', fontSize: '20px', fontWeight: 800, letterSpacing: '-0.5px', marginBottom: '8px' }}>Create Issue</h2>
             <p style={{ color: '#71717a', fontSize: '14px', marginBottom: '32px' }}>
-              Select a member and book to record a new loan.
+              Select a member and book(s) to record a new loan.
             </p>
+
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '32px', background: 'rgba(255,255,255,0.03)', padding: '6px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <button 
+                onClick={() => setIssueMode('single')}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer', border: 'none',
+                  background: issueMode === 'single' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+                  color: issueMode === 'single' ? '#fbbf24' : '#71717a',
+                  fontWeight: 800, fontSize: '12px', transition: 'all 0.2s'
+                }}
+              >Single Book</button>
+              <button 
+                onClick={() => setIssueMode('multiple')}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer', border: 'none',
+                  background: issueMode === 'multiple' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+                  color: issueMode === 'multiple' ? '#fbbf24' : '#71717a',
+                  fontWeight: 800, fontSize: '12px', transition: 'all 0.2s'
+                }}
+              >Multiple Books</button>
+            </div>
 
             <form onSubmit={handleIssue} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
@@ -258,42 +299,81 @@ export default function Transactions() {
                 </select>
               </div>
 
-              <div>
-                <label style={labelStyle}>📚 Selected Book *</label>
-                <select className="input-field" value={issueForm.bookId}
-                  onChange={e => setIssueForm(p => ({ ...p, bookId: e.target.value }))} required>
-                  <option value="">— Select available book —</option>
-                  {availableBooks.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.title} — {b.author} ({b.available} available)
-                    </option>
-                  ))}
-                </select>
-                {availableBooks.length === 0 && (
-                  <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>
-                    ⚠️ No books currently available for issue.
-                  </p>
-                )}
-              </div>
+              {issueMode === 'single' ? (
+                <div>
+                  <label style={labelStyle}>📚 Selected Book *</label>
+                  <select className="input-field" value={issueForm.bookId}
+                    onChange={e => setIssueForm(p => ({ ...p, bookId: e.target.value }))} required={issueMode === 'single'}>
+                    <option value="">— Select available book —</option>
+                    {availableBooks.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.title} — {b.author} ({b.available} available)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label style={labelStyle}>📚 Select Multiple Books *</label>
+                  <div style={{
+                    maxHeight: '200px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', 
+                    borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)',
+                    padding: '8px'
+                  }}>
+                    {availableBooks.map(b => (
+                      <div 
+                        key={b.id} 
+                        onClick={() => toggleBookSelection(b.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px',
+                          borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s',
+                          background: issueForm.bookIds.includes(b.id) ? 'rgba(245, 158, 11, 0.08)' : 'transparent',
+                          marginBottom: '2px'
+                        }}
+                      >
+                        <div style={{
+                          width: '18px', height: '18px', borderRadius: '4px', border: '2px solid',
+                          borderColor: issueForm.bookIds.includes(b.id) ? '#fbbf24' : 'rgba(255,255,255,0.1)',
+                          background: issueForm.bookIds.includes(b.id) ? '#fbbf24' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          {issueForm.bookIds.includes(b.id) && <span style={{ color: '#000', fontSize: '12px', fontWeight: 900 }}>✓</span>}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ color: issueForm.bookIds.includes(b.id) ? '#fff' : '#d4d4d8', fontSize: '13px', fontWeight: 700 }}>{b.title}</div>
+                          <div style={{ color: '#71717a', fontSize: '11px' }}>{b.author} · {b.available} available</div>
+                        </div>
+                      </div>
+                    ))}
+                    {availableBooks.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '20px', color: '#71717a', fontSize: '13px' }}>No books available</div>
+                    )}
+                  </div>
+                  <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#71717a', fontWeight: 600 }}>{issueForm.bookIds.length} books selected</span>
+                    <button type="button" onClick={() => setIssueForm(p => ({ ...p, bookIds: [] }))} style={{ border: 'none', background: 'transparent', color: '#ef4444', fontSize: '11px', fontWeight: 800, cursor: 'pointer' }}>Clear All</button>
+                  </div>
+                </div>
+              )}
 
               <div style={{
                 background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.1)',
                 borderRadius: '14px', padding: '20px', fontSize: '13px', color: '#71717a', lineHeight: 1.8,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Loan Period</span>
-                  <span style={{ color: '#fbbf24', fontWeight: 800 }}>14 Days</span>
+                  <span>Max Borrowing Limit</span>
+                  <span style={{ color: '#fbbf24', fontWeight: 800 }}>5 Books Total</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Overdue Penalty</span>
-                  <span style={{ color: '#ef4444', fontWeight: 800 }}>₹5.00 / day</span>
+                  <span>Loan Period</span>
+                  <span style={{ color: '#fbbf24', fontWeight: 800 }}>14 Days</span>
                 </div>
               </div>
 
               <button type="submit" className="btn-primary"
-                disabled={submitting || !issueForm.bookId || !issueForm.memberId}
+                disabled={submitting || !issueForm.memberId || (issueMode === 'single' ? !issueForm.bookId : issueForm.bookIds.length === 0)}
                 style={{ width: '100%', padding: '16px', fontSize: '16px' }}>
-                {submitting ? 'Processing...' : 'Authorize Book Issue'}
+                {submitting ? 'Processing...' : `Authorize ${issueMode === 'multiple' ? 'Issues' : 'Issue'}`}
               </button>
             </form>
           </div>

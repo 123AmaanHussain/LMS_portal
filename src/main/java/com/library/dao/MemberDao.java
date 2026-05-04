@@ -101,11 +101,43 @@ public class MemberDao {
     }
 
     public void deleteMember(String id) throws SQLException {
-        String sql = "DELETE FROM members WHERE id = ?::uuid";
-        try (Connection conn = DbConfig.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, id);
-            ps.executeUpdate();
+        try (Connection conn = DbConfig.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                // 1. Restore availability for books currently issued to this member
+                String updateBooksSql = """
+                    UPDATE books SET available = available + 1
+                    WHERE id IN (
+                        SELECT book_id FROM transactions
+                        WHERE member_id = ?::uuid AND status = 'ISSUED'
+                    )
+                    """;
+                try (PreparedStatement ps = conn.prepareStatement(updateBooksSql)) {
+                    ps.setString(1, id);
+                    ps.executeUpdate();
+                }
+
+                // 2. Delete all transactions for this member (to satisfy foreign key)
+                String deleteTxSql = "DELETE FROM transactions WHERE member_id = ?::uuid";
+                try (PreparedStatement ps = conn.prepareStatement(deleteTxSql)) {
+                    ps.setString(1, id);
+                    ps.executeUpdate();
+                }
+
+                // 3. Delete the member record
+                String deleteMemberSql = "DELETE FROM members WHERE id = ?::uuid";
+                try (PreparedStatement ps = conn.prepareStatement(deleteMemberSql)) {
+                    ps.setString(1, id);
+                    ps.executeUpdate();
+                }
+
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
         }
     }
 
