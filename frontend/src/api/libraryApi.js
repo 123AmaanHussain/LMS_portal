@@ -80,8 +80,8 @@ export const getTransactions       = () => req(`${BASE}/transactions`)
 export const getActiveTransactions = () => req(`${BASE}/transactions/active`)
 export const getOverdueTransactions= () => req(`${BASE}/transactions/overdue`)
 
-export const issueBook  = (bookId, memberId)  =>
-  req(`${BASE}/transactions/issue`,  { method: 'POST', body: JSON.stringify({ bookId, memberId }) })
+export const issueBook  = (payload)  =>
+  req(`${BASE}/transactions/issue`,  { method: 'POST', body: JSON.stringify(payload) })
 
 export const returnBook = (transactionId)     =>
   req(`${BASE}/transactions/return`, { method: 'POST', body: JSON.stringify({ transactionId }) })
